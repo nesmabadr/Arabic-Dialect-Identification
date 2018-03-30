@@ -6,13 +6,9 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-
-import static android.content.ContentValues.TAG;
 
 /**
  * Created by karim on 3/18/2018.
@@ -25,12 +21,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
     public DataBaseHelper(Context context) {
         super(context, DB_NAME, null, DB_VER);
-
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-
         db.execSQL("CREATE TABLE history (" + "id INTEGER PRIMARY KEY, "
                 + " title TEXT , date DATE);");
     }
@@ -40,15 +34,14 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         try {
             db.execSQL("DROP TABLE IF EXISTS history");
             onCreate(db);
-
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
         }
     }
 
     public ArrayList<history_item> getAllHistories() {
         ArrayList<history_item> historyList = new ArrayList<>();
         String selectQuery = "SELECT  * FROM history";
-
 
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor c = db.rawQuery(selectQuery, null);
@@ -81,5 +74,4 @@ public class DataBaseHelper extends SQLiteOpenHelper {
 
         return id;
     }
-
 }

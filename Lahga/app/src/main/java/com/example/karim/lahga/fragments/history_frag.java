@@ -1,17 +1,12 @@
 package com.example.karim.lahga.fragments;
 
-import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.view.ViewPager;
-import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.view.animation.BounceInterpolator;
 import android.widget.AdapterView;
 
@@ -25,7 +20,6 @@ import com.example.karim.lahga.historyAdapter;
 import com.example.karim.lahga.history_item;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by karim on 2/24/2018.

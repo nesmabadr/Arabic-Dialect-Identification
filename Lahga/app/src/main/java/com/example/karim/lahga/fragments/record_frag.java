@@ -1,16 +1,11 @@
 package com.example.karim.lahga.fragments;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
@@ -18,16 +13,19 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
-import com.example.karim.lahga.R;
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Session;
 
-import java.io.ByteArrayOutputStream;
+import com.example.karim.lahga.R;
+import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+import com.wang.avi.AVLoadingIndicatorView;
+
+import org.apache.commons.io.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
 
 import info.kimjihyok.ripplelibrary.Rate;
 import info.kimjihyok.ripplelibrary.VoiceRippleView;
@@ -41,28 +39,27 @@ import info.kimjihyok.ripplelibrary.renderer.TimerCircleRippleRenderer;
 
 public class record_frag extends Fragment {
 
-    private static final String TAG = "MainActivity";
-    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
+    private static final String TAG = "RECORD";
     private static final String DIRECTORY_NAME = "AudioCache";
     private Button playButton;
+    private TextView progressText;
     private MediaPlayer player = null;
     private File directory = null;
     private File audioFile = null;
-    private boolean permissionToRecordAccepted = false;
-    private String[] permissions = {Manifest.permission.RECORD_AUDIO};
     private VoiceRippleView voiceRipple;
     private Renderer currentRenderer;
+    private AVLoadingIndicatorView loading;
 
-    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         View rootView = inflater.inflate(R.layout.record_frag, container, false);
+        loading =  rootView.findViewById(R.id.avi);
         voiceRipple = rootView.findViewById(R.id.voice_ripple_view);
+        progressText = rootView.findViewById(R.id.textView);
+
         playButton = rootView.findViewById(R.id.button);
         playButton.setOnClickListener(new View.OnClickListener() {
-
             @Override
-
             public void onClick(View view) {
                 if (directory != null && audioFile != null) {
                     player = new MediaPlayer();
@@ -79,8 +76,6 @@ public class record_frag extends Fragment {
 
         });
 
-        // directory = new File(Environment.getExternalStorageDirectory(), DIRECTORY_NAME);
-
         directory = new File(getActivity().getExternalCacheDir().getAbsolutePath(), DIRECTORY_NAME);
 
         if (directory.exists()) {
@@ -95,11 +90,13 @@ public class record_frag extends Fragment {
             @Override
             public void onRecordingStopped() {
                 Log.d(TAG, "onRecordingStopped()");
+                    progressText.setText("Tap to Record");
             }
 
             @Override
             public void onRecordingStarted() {
                 Log.d(TAG, "onRecordingStarted()");
+                progressText.setText("Recording..");
             }
         });
 
@@ -109,7 +106,6 @@ public class record_frag extends Fragment {
         voiceRipple.setBackgroundRippleRatio(1.49); //1.4
 
         // set recorder related settings for ripple view
-
         voiceRipple.setMediaRecorder(new MediaRecorder());
         voiceRipple.setOutputFile(audioFile.getAbsolutePath());
         voiceRipple.setAudioSource(MediaRecorder.AudioSource.MIC);
@@ -117,7 +113,6 @@ public class record_frag extends Fragment {
         voiceRipple.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
         // set inner icon
-
         voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_none_black_48dp), ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_black_48dp));
         voiceRipple.setIconSize(45); //30
 
@@ -125,11 +120,15 @@ public class record_frag extends Fragment {
         final Runnable runnable = new Runnable() {
             public void run() {
                 try {
+                    loading.smoothToShow();
                     voiceRipple.reset();
-                    Toast.makeText(getActivity(), "Sending data", Toast.LENGTH_SHORT).show();
-                    sendData();
+                    voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.plain), ContextCompat.getDrawable(getActivity(), R.drawable.plain));
+                    voiceRipple.setClickable(false);
+                    playButton.setVisibility(View.GONE);
+                    progressText.setText("Processing audio..");
+                    preprocess();
                 }
-                catch(RuntimeException ex){
+                catch (RuntimeException ex) {
                     Toast.makeText(getActivity(), "Something went wrong", Toast.LENGTH_SHORT).show();
                 }
             }
@@ -140,14 +139,19 @@ public class record_frag extends Fragment {
             @Override
 
             public void onClick(View view) {
-
                 if (voiceRipple.isRecording()) {
                     voiceRipple.stopRecording();
                     voiceRipple.reset();
                     handler.removeCallbacks(runnable);
                 } else {
-                    voiceRipple.startRecording();
-                    handler.postDelayed(runnable, 5000);
+                    try {
+                        deleteFilesInDir(directory);
+                        voiceRipple.startRecording();
+                        handler.postDelayed(runnable, 5000);
+                    }
+                    catch(RuntimeException e){
+
+                    }
                 }
             }
 
@@ -159,13 +163,17 @@ public class record_frag extends Fragment {
             ((TimerCircleRippleRenderer) currentRenderer).setStrokeWidth(20);
         }
         voiceRipple.setRenderer(currentRenderer);
-        ActivityCompat.requestPermissions(getActivity(), permissions, REQUEST_RECORD_AUDIO_PERMISSION);
-
         return rootView;
     }
 
-    private Paint getArcPaint() {
+    private void preprocess(){
+        String command = "-i " + directory + "/audio.mp3 -lavfi showspectrumpic " + directory + "/spectrogram.png";
+        String []cmd = command.split(" ");
 
+        execFFMPEG(cmd);
+    }
+
+    private Paint getArcPaint() {
         Paint paint = new Paint();
         paint.setColor(ContextCompat.getColor(getActivity(), R.color.colorPrimary));
         paint.setStrokeWidth(20);
@@ -176,7 +184,6 @@ public class record_frag extends Fragment {
     }
 
     private Paint getDefaultRipplePaint() {
-
         Paint ripplePaint = new Paint();
         ripplePaint.setStyle(Paint.Style.FILL);
         ripplePaint.setColor(ContextCompat.getColor(getActivity(), R.color.colorPrimary));
@@ -185,7 +192,6 @@ public class record_frag extends Fragment {
     }
 
     private Paint getDefaultRippleBackgroundPaint() {
-
         Paint rippleBackgroundPaint = new Paint();
         rippleBackgroundPaint.setStyle(Paint.Style.FILL);
         rippleBackgroundPaint.setColor((ContextCompat.getColor(getActivity(), R.color.colorPrimaryDark) & 0x00FFFFFF) | 0x40000000);
@@ -196,7 +202,6 @@ public class record_frag extends Fragment {
 
 
     private Paint getButtonPaint() {
-
         Paint paint = new Paint();
         paint.setAntiAlias(true);
         paint.setColor(Color.WHITE);
@@ -218,84 +223,69 @@ public class record_frag extends Fragment {
             player.release();
             player = null;
         }
+        deleteFilesInDir(directory);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         voiceRipple.onDestroy();
+        deleteFilesInDir(directory);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        progressText.setText("Tap to Record");
     }
 
     private boolean deleteFilesInDir(File path) {
-        if(path.exists()) {
-            File[] files = path.listFiles();
-            if (files == null) {
-                return true;
-            }
-
-            for(int i=0; i<files.length; i++) {
-                if (files[i].isDirectory()) {
-                    files[i].delete();
-                }
-            }
+        try {
+            FileUtils.cleanDirectory(path);
+        } catch (Exception ex) {
+            Log.e(" Failed to delete: ", ex.getMessage());
         }
         return true;
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    private void execFFMPEG(String[] cmd){
+        FFmpeg ffmpeg = FFmpeg.getInstance(getActivity());
+        try {
+            ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
 
-        switch (requestCode){
-            case REQUEST_RECORD_AUDIO_PERMISSION:
-                permissionToRecordAccepted  = grantResults[0] == PackageManager.PERMISSION_GRANTED;
-                break;
-        }
-
-        if (!permissionToRecordAccepted )
-            getActivity().finish();
-    }
-
-    public void sendData() {
-        new AsyncTask<Integer, Void, Void>() {
-            @Override
-            protected Void doInBackground(Integer... params) {
-                try {
-                    String sshReply = executeRemoteCommand("karimatwa", "Karim@900130589", "10.7.60.151", 22);
-                    Log.i("SSH Reply: ", sshReply);
-                } catch (Exception e) {
-                    e.printStackTrace();
+                @Override
+                public void onStart() {
                 }
-                return null;
-            }
-        }.execute(1);
-    }
 
-    public static String executeRemoteCommand(String username, String password, String hostname, int port)
-            throws Exception {
-        JSch jsch = new JSch();
-        Session session = jsch.getSession(username, hostname, port);
-        session.setPassword(password);
+                @Override
+                public void onProgress(String message) {
+                    Log.i("FFMPEG", "start");
+                    Log.i("Progress:", message);
+                }
 
-        // Avoid asking for key confirmation
-        Properties prop = new Properties();
-        prop.put("StrictHostKeyChecking", "no");
-        session.setConfig(prop);
+                @Override
+                public void onFailure(String message) {
+                    Log.i("Failure:", message);
+                }
 
-        session.connect();
+                @Override
+                public void onSuccess(String message) {
+                    Log.i("Sucess:", message);
+                }
 
-        // SSH Channel
-        ChannelExec channelssh = (ChannelExec)
-                session.openChannel("exec");
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        channelssh.setOutputStream(baos);
-
-        // Execute command
-        channelssh.setCommand("ls");
-        channelssh.connect();
-        channelssh.disconnect();
-
-        return baos.toString();
+                @Override
+                public void onFinish() {
+                    Log.i("FFMPEG", "finish");
+                    loading.smoothToHide();
+                    playButton.setVisibility(View.VISIBLE);
+                    progressText.setText("Tap to Record");
+                    voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_none_black_48dp), ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_black_48dp));
+                    voiceRipple.setClickable(true);
+                    // initTensorFlowAndLoadModel();
+                }
+            });
+        } catch (FFmpegCommandAlreadyRunningException e) {
+            // Handle if FFmpeg is already running
+        }
     }
 }
-
