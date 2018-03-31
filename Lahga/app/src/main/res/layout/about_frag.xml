@@ -3,27 +3,27 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/background_light"
+    android:background="@color/colorPrimary"
     android:orientation="vertical"
     android:weightSum="1">
 
-    <TextView
+    <com.example.karim.lahga.OpenSansSBTextView
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="15dp"
+        android:layout_marginTop="30dp"
+        android:layout_weight="0.8"
         android:gravity="center_horizontal"
-        android:text="Supported Arabic Dialects: \n Egyptian \n Levantine \n Gulf \n North African"
-        android:textSize="18sp"
-        android:layout_weight="0.8"/>
+        android:text="Supported Arabic Dialects: \n Egyptian \n Levantine \n Golf \n North African"
+        android:textSize="16sp"/>
 
-    <TextView
+    <com.example.karim.lahga.OpenSansSBTextView
         android:id="@+id/textView2"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.2"
         android:gravity="bottom|center_horizontal"
         android:text="KMNZ ®"
-        android:textSize="18sp" />
+        android:textSize="16sp"/>
 
 </LinearLayout>

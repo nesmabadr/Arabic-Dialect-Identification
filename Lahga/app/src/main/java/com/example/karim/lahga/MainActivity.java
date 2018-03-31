@@ -14,7 +14,12 @@ import android.support.v4.view.ViewPager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.widget.TextView;
 
+import com.baoyz.swipemenulistview.SwipeMenuCreator;
+import com.baoyz.swipemenulistview.SwipeMenuListView;
 import com.example.karim.lahga.fragments.about_frag;
 import com.example.karim.lahga.fragments.history_frag;
 import com.example.karim.lahga.fragments.record_frag;
@@ -29,13 +34,19 @@ public class MainActivity extends AppCompatActivity {
 
     private Toolbar toolbar;
     private TabLayout tabLayout;
-    public ViewPager viewPager;
+    private ViewPager viewPager;
     public DataBaseHelper DBHelper;
+    public Boolean playEnabled = false;
+    public  ArrayList<history_item> arrayOfHistory = new ArrayList<>();
+    public historyAdapter adapter;
+    public SwipeMenuListView listView;
+    public SwipeMenuCreator creator;
     private static final int PERMISSIONS = 200;
     private boolean permissionToRecordAccepted = false;
     private boolean permissionToReadAccepted = false;
     private boolean permissionToWriteAccepted = false;
     private String[] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+    private String titles[] = {"Record", "History", "About"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,12 +62,16 @@ public class MainActivity extends AppCompatActivity {
         tabLayout = findViewById(R.id.tabs);
         tabLayout.setupWithViewPager(viewPager);
 
+        for (int i = 0; i < tabLayout.getTabCount(); i++) {
+            //noinspection ConstantConditions
+            OpenSansSBTextView title = (OpenSansSBTextView) LayoutInflater.from(this).inflate(R.layout.tab_title,null);
+            title.setText(titles[i]);
+            tabLayout.getTabAt(i).setCustomView(title);
+
+        }
         DBHelper = new DataBaseHelper(getApplicationContext());
-        //DBHelper.addHistory("Egyptian", "19/3/2018");
-
-        ActivityCompat.requestPermissions(this, permissions, PERMISSIONS);
-
         loadFFMPEG();
+        ActivityCompat.requestPermissions(this, permissions, PERMISSIONS);
     }
 
     private void setupViewPager(ViewPager viewPager) {
@@ -111,9 +126,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onFinish() {}
             });
-        } catch (FFmpegNotSupportedException e) {
-            showUnsupportedExceptionDialog();
-        }
+        } catch (FFmpegNotSupportedException e) { showUnsupportedExceptionDialog(); }
     }
 
     private void showUnsupportedExceptionDialog() {
