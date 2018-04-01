@@ -7,8 +7,12 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
+import java.util.Locale;
 
 /**
  * Created by karim on 3/18/2018.
@@ -50,8 +54,18 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         if (c.moveToFirst()) {
             do {
                 history_item item = new history_item();
-                item.setData(c.getInt(c.getColumnIndex("id")),c.getString(c.getColumnIndex("title")) , c.getString(c.getColumnIndex("date")));
-                historyList.add(item);
+                try {
+                    SimpleDateFormat spf=new SimpleDateFormat("dd/MM/yyyy");
+                    Date newDate = spf.parse(c.getString(c.getColumnIndex("date")));
+                    spf= new SimpleDateFormat("dd MMM yyyy");
+                    String date = spf.format(newDate);
+                    item.setData(c.getInt(c.getColumnIndex("id")), c.getString(c.getColumnIndex("title")), date);
+                    historyList.add(item);
+                }
+                catch (ParseException e) {
+                    e.printStackTrace();
+                }
+
             } while (c.moveToNext());
         }
         Collections.reverse(historyList);

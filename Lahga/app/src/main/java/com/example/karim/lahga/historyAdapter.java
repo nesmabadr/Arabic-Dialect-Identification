@@ -29,7 +29,7 @@ public class historyAdapter extends ArrayAdapter<history_item> {
         TextView textview = convertView.findViewById(R.id.textView);
         TextView textview2 = convertView.findViewById(R.id.textView2);
         textview.setText(history.title);
-        textview2.setText(history.date);
+        textview2.setText("Saved on " + history.date);
         return convertView;
     }
 }

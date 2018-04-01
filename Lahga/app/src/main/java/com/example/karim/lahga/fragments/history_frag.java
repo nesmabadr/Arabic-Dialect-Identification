@@ -52,12 +52,13 @@ public class history_frag extends Fragment {
                 // create "delete" item
                 SwipeMenuItem deleteItem = new SwipeMenuItem(
                         getActivity().getApplicationContext());
-                // set item background
-                deleteItem.setBackground(new ColorDrawable(Color.RED));
-                // set item width
-                deleteItem.setWidth(200);
-                // set a icon
-                deleteItem.setIcon(R.drawable.ic_delete_white_48dp);
+                deleteItem.setBackground(new ColorDrawable(Color.parseColor("#FF6666")));
+                deleteItem.setWidth(250);
+                deleteItem.setIcon(R.drawable.ic_delete_white_24dp);
+               // deleteItem.setTitle("Delete");
+                //deleteItem.setTitleSize(12);
+                //deleteItem.setTitleColor(Color.WHITE);
+
                 // add to menu
                 menu.addMenuItem(deleteItem);
             }
@@ -73,7 +74,7 @@ public class history_frag extends Fragment {
             }
         });
         ((MainActivity)getActivity()).listView.setSwipeDirection(SwipeMenuListView.DIRECTION_RIGHT);
-        ((MainActivity)getActivity()).listView.setOpenInterpolator(new BounceInterpolator());
+        //((MainActivity)getActivity()).listView.setOpenInterpolator(new BounceInterpolator());
 
         ((MainActivity)getActivity()).listView.setOnMenuItemClickListener(new SwipeMenuListView.OnMenuItemClickListener() {
             @Override

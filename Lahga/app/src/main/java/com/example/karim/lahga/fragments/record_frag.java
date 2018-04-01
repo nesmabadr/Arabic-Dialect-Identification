@@ -334,7 +334,7 @@ public class record_frag extends Fragment {
             return;
         }
 
-        Bitmap bitmap = BitmapFactory.decodeFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +"/photo.jpg");
+        Bitmap bitmap = BitmapFactory.decodeFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +"/dog.jpg");
         bitmap = Bitmap.createScaledBitmap(bitmap, ImageClassifier.DIM_IMG_SIZE_X, ImageClassifier.DIM_IMG_SIZE_Y, false);
         String textToShow = imageClassifier.classifyFrame(bitmap);
         showPredictionDialog(textToShow);

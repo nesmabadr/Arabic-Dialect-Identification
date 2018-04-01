@@ -11,14 +11,38 @@
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginLeft="15dp"
+        android:layout_marginRight="15dp"
         android:layout_marginTop="30dp"
-        android:layout_weight="0.8"
+        android:layout_weight="0.2"
         android:gravity="center_horizontal"
-        android:text="Supported Arabic Dialects: \n Egyptian \n Levantine \n Golf \n North African"
-        android:textSize="16sp"/>
+        android:text=" This application serves the purpose of \n classifying different spoken Arabic dialects \n using deep learning." />
 
     <com.example.karim.lahga.OpenSansSBTextView
         android:id="@+id/textView2"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginLeft="15dp"
+        android:layout_marginRight="15dp"
+        android:layout_weight="0.1"
+        android:gravity="center_vertical"
+        android:text="Supported Arabic Dialects:"
+        android:textSize="16sp" />
+
+    <ListView
+        android:id="@+id/listView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginLeft="15dp"
+        android:layout_marginRight="15dp"
+        android:layout_weight="0.5"
+        android:listSelector="@android:color/transparent"
+        android:divider="@color/colorAccent"
+        android:dividerHeight="0.2dip"
+        android:entries="@array/dialectsSupported" />
+
+    <com.example.karim.lahga.OpenSansSBTextView
+        android:id="@+id/textView3"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.2"

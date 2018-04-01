@@ -1,5 +1,15 @@
 <resources>
     <string name="app_name">Lahga</string>
+    <string name="egyptian">Egyptian</string>
+    <string name="northafrican">"North African</string>
+    <string name="levantine">Levantine</string>
+    <string name="gulf">Gulf</string>
+    <string-array name="dialectsSupported">
+        <item>@string/egyptian</item>
+        <item>@string/northafrican</item>
+        <item>@string/levantine</item>
+        <item>@string/gulf</item>
+    </string-array>
     <string name="device_not_supported">Device not supported</string>
     <string name="device_not_supported_message">FFmpeg is not supported on your device</string>
 </resources>
