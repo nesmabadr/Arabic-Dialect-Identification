@@ -5,6 +5,10 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 
+import com.example.karim.lahga.finishListener;
+
+import static com.example.karim.lahga.MainActivity.finish;
+
 /**
  * Created by jkimab on 2017. 9. 1..
  */
@@ -55,7 +59,8 @@ public class TimerCircleRippleRenderer extends CircleRippleRenderer {
     canvas.drawArc(rect, -90, (float) (360.0 * (currentTimeMilliseconds / maxTimeMilliseconds)), false, timerPaint);
 
     if (currentTimeMilliseconds >= maxTimeMilliseconds) {
-      listener.stopRecording();
+        listener.stopRecording();
+        finish.setFinish(true);
     }
   }
 

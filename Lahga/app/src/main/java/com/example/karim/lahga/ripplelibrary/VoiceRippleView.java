@@ -4,21 +4,30 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.media.AudioFormat;
 import android.media.MediaRecorder;
 import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-
-import java.io.IOException;
-
+import java.io.File;
 import com.example.karim.lahga.R;
 import com.example.karim.lahga.ripplelibrary.listener.RecordingListener;
 import com.example.karim.lahga.ripplelibrary.renderer.Renderer;
 import com.example.karim.lahga.ripplelibrary.renderer.TimerCircleRippleRenderer;
+import omrecorder.AudioChunk;
+import omrecorder.AudioRecordConfig;
+import omrecorder.OmRecorder;
+import omrecorder.PullTransport;
+import omrecorder.PullableSource;
+import omrecorder.Recorder;
+import omrecorder.WriteAction;
+
+import static com.example.karim.lahga.MainActivity.audioAmplitudes;
 
 /**
  * Created by jihyokkim on 2017. 8. 24..
@@ -31,22 +40,16 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
   private static int MIN_ICON_SIZE;
   private static int MIN_FIRST_RIPPLE_RADIUS;
   private static final int INVALID_PARAMETER = -1;
-
+  private File directory;
   private int buttonRadius;
   private int rippleRadius;
   private int backgroundRadius;
   private int iconSize;
   private boolean isRecording;
-  private boolean isPrepared;
-
   private int rippleDecayRate = INVALID_PARAMETER;
   private int thresholdRate = INVALID_PARAMETER;
   private double backgroundRippleRatio = INVALID_PARAMETER;
-  private int audioSource = INVALID_PARAMETER;
-  private int outputFormat = INVALID_PARAMETER;
-  private int audioEncoder = INVALID_PARAMETER;
-
-  private MediaRecorder recorder;
+  private Recorder Omrecorder;
   private Drawable recordIcon;
   private Drawable recordingIcon;
   private OnClickListener listener;
@@ -54,6 +57,7 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
   private RecordingListener recordingListener;
   private Renderer currentRenderer;
   private int currentRecordedTime = 0;
+
 
   public void setRenderer(Renderer currentRenderer) {
     this.currentRenderer = currentRenderer;
@@ -107,19 +111,15 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
     setRippleSampleRate(Rate.LOW);
   }
 
-  public void setMediaRecorder(MediaRecorder recorder) {
-    this.recorder = recorder;
-  }
-
   public void onStop() throws IllegalStateException {
-    if (isPrepared && recorder != null) {
-      recorder.stop();
+    if (isRecording) {
+        stopRecording();
     }
   }
 
   public void onDestroy() {
-    if (isPrepared && recorder != null) {
-      recorder.release();
+    if (isRecording) {
+        stopRecording();
     }
   }
 
@@ -173,25 +173,8 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
     setMeasuredDimension(w, h);
   }
 
-
   public boolean isRecording() {
     return isRecording;
-  }
-
-  public void setOutputFile(String absolutePath) {
-    recorder.setOutputFile(absolutePath);
-  }
-
-  public void setAudioSource(int audioSource) {
-    this.audioSource = audioSource;
-  }
-
-  public void setOutputFormat(int outputFormat) {
-    this.outputFormat = outputFormat;
-  }
-
-  public void setAudioEncoder(int audioEncoder) {
-    this.audioEncoder = audioEncoder;
   }
 
   public void setIconSize(int dpSize) {
@@ -234,16 +217,6 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
     invalidate();
   }
 
-  public void reset() {
-    rippleRadius = 0;
-    backgroundRadius = 0;
-    if (currentRenderer instanceof TimerCircleRippleRenderer) {
-      ((TimerCircleRippleRenderer) currentRenderer).setCurrentTimeMilliseconds(0);
-    }
-    stopRecording();
-  }
-
-
   public void setBackgroundRippleRatio(double ratio) {
     this.backgroundRippleRatio = ratio;
     minFirstRadius = (int) (MIN_FIRST_RIPPLE_RADIUS + (MIN_FIRST_RIPPLE_RADIUS * backgroundRippleRatio));
@@ -282,66 +255,50 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
 
   @Override
   public void stopRecording() {
-    isRecording = false;
-    if (isPrepared) {
-      recorder.stop();
-      recorder.reset();
-      isPrepared = false;
-      handler.removeCallbacks(updateRipple);
-      currentRecordedTime = 0;
-      invalidate();
-      if (recordingListener != null) {
-        recordingListener.onRecordingStopped();
+      isRecording = false;
+      rippleRadius = 0;
+      backgroundRadius = 0;
+      if (currentRenderer instanceof TimerCircleRippleRenderer) {
+          ((TimerCircleRippleRenderer) currentRenderer).setCurrentTimeMilliseconds(0);
       }
-    }
-  }
-
-  @Override
-  public void startRecording() {
-    checkValidState();
     try {
-      prepareRecord();
-      recorder.start();
-      isRecording = true;
-      isPrepared = true;
-      handler.post(updateRipple);
-      invalidate();
-      if (recordingListener != null) {
-        recordingListener.onRecordingStarted();
-      }
+      Omrecorder.stopRecording();
     } catch (Exception e) {
-      Log.e(TAG, "startRecording(): ", e);
+        Log.e(TAG, "stopRecording(): ", e);
+    }
+    handler.removeCallbacks(updateRipple);
+    currentRecordedTime = 0;
+    invalidate();
+    if (recordingListener != null) {
+        recordingListener.onRecordingStopped();
     }
   }
 
-  private void checkValidState() {
-    if (thresholdRate == INVALID_PARAMETER || backgroundRippleRatio == INVALID_PARAMETER || rippleDecayRate == INVALID_PARAMETER) {
-      throw new IllegalStateException("Set rippleSampleRate, backgroundRippleRatio and rippleDecayRate before starting to record!");
-    }
-
-    if (audioSource == INVALID_PARAMETER || outputFormat == INVALID_PARAMETER || audioEncoder == INVALID_PARAMETER) {
-      throw new IllegalStateException("You have to set audioSource, outputFormat, and audioEncoder before starting to record!");
-    }
-  }
-
-
-  private void prepareRecord() throws IOException {
-    recorder.setAudioSource(audioSource);
-    recorder.setOutputFormat(outputFormat);
-    recorder.setAudioEncoder(audioEncoder);
-    recorder.prepare();
+    @Override
+    public void startRecording() {
+        isRecording = true;
+        try {
+            setupRecorder();
+            Omrecorder.startRecording();
+            handler.post(updateRipple);
+            invalidate();
+            if (recordingListener != null)
+                recordingListener.onRecordingStarted();
+        } catch (Exception e) {
+        Log.e(TAG, "startRecording(): ", e);
+        }
   }
 
   private Runnable updateRipple = new Runnable() {
     @Override
     public void run() {
       if (isRecording) {
-        drop(recorder.getMaxAmplitude());
-        currentRecordedTime = currentRecordedTime + 50;
+        //drop(1000); //recorder.getMaxAmplitude()
+        currentRecordedTime = currentRecordedTime + 25;
         if (currentRenderer instanceof TimerCircleRippleRenderer) {
           ((TimerCircleRippleRenderer)currentRenderer).setCurrentTimeMilliseconds(currentRecordedTime);
         }
-        handler.postDelayed(this, 50);  // updates the visualizer every 50 milliseconds
+        handler.postDelayed(this, 25);  // updates the visualizer every 25 milliseconds
       }
     }
   };
@@ -349,11 +306,41 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
   public void setRecordDrawable(Drawable recordIcon, Drawable recordingIcon) {
     this.recordIcon = recordIcon;
     this.recordingIcon = recordingIcon;
-
     invalidate();
   }
 
   public void setRecordingListener(RecordingListener recordingListener) {
     this.recordingListener = recordingListener;
   }
+
+  private void setupRecorder(){
+    Omrecorder = OmRecorder.wav(
+              new PullTransport.Default(mic(),
+                      new PullTransport.OnAudioChunkPulledListener() {
+                          @Override public void onAudioChunkPulled(AudioChunk audioChunk) {
+                              if (isRecording) {
+                                  if (audioChunk.maxAmplitude() > 40) {
+                                      drop((int) audioChunk.maxAmplitude() * 8);
+                                      audioAmplitudes = audioAmplitudes + (int) audioChunk.maxAmplitude();
+                                  }else
+                                      drop(10);
+                              }
+                              else
+                                  drop(10);
+                          }
+                      }), file());
+  }
+
+  private PullableSource mic () {
+    return new PullableSource.NoiseSuppressor(
+        new PullableSource.Default(
+            new AudioRecordConfig.Default(
+                MediaRecorder.AudioSource.MIC, AudioFormat.ENCODING_PCM_16BIT,
+                AudioFormat.CHANNEL_IN_MONO, 48000)));
+  }
+
+  public void setDirectory(File directory) {this.directory = directory;}
+
+  @NonNull
+  private File file () { return new File(directory, "audio.wav"); }
 }

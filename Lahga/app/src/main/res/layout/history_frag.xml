@@ -5,12 +5,10 @@
     android:background="@color/colorPrimary"
     android:orientation="vertical">
 
-    <com.baoyz.swipemenulistview.SwipeMenuListView
+    <com.example.karim.lahga.SwipeMenuList.SwipeMenuListView
         android:id="@+id/listView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="15dp"
-        android:layout_marginTop="15dp"
         android:divider="@color/colorAccent"
         android:dividerHeight="0.2dip" />
 

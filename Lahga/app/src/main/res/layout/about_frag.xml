@@ -7,23 +7,23 @@
     android:orientation="vertical"
     android:weightSum="1">
 
-    <com.example.karim.lahga.OpenSansSBTextView
+    <com.example.karim.lahga.JustifiedOpenSansSBTextView
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginLeft="15dp"
         android:layout_marginRight="15dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="15dp"
         android:layout_weight="0.2"
-        android:gravity="center_horizontal"
-        android:text=" This application serves the purpose of \n classifying different spoken Arabic dialects \n using deep learning." />
+        android:gravity="left"
+        android:text=" This application serves the purpose of classifying different spoken Arabic dialects using deep learning."
+        android:textSize="16sp" />
 
     <com.example.karim.lahga.OpenSansSBTextView
         android:id="@+id/textView2"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginLeft="15dp"
-        android:layout_marginRight="15dp"
+        android:layout_marginLeft="25dp"
         android:layout_weight="0.1"
         android:gravity="center_vertical"
         android:text="Supported Arabic Dialects:"
@@ -33,13 +33,13 @@
         android:id="@+id/listView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginLeft="15dp"
-        android:layout_marginRight="15dp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
         android:layout_weight="0.5"
-        android:listSelector="@android:color/transparent"
         android:divider="@color/colorAccent"
         android:dividerHeight="0.2dip"
-        android:entries="@array/dialectsSupported" />
+        android:entries="@array/dialectsSupported"
+        android:listSelector="@android:color/transparent" />
 
     <com.example.karim.lahga.OpenSansSBTextView
         android:id="@+id/textView3"

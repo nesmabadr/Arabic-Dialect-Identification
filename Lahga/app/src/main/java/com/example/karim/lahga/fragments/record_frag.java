@@ -6,29 +6,26 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.media.MediaPlayer;
-import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
+import android.os.Vibrator;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
-import com.example.karim.lahga.ImageClassifier;
 import com.example.karim.lahga.MainActivity;
 import com.example.karim.lahga.OpenSansSBTextView;
 import com.example.karim.lahga.R;
+import com.example.karim.lahga.finishListener;
 import com.example.karim.lahga.historyAdapter;
-import com.example.karim.lahga.history_item;
 import com.example.karim.lahga.ripplelibrary.Rate;
 import com.example.karim.lahga.ripplelibrary.VoiceRippleView;
 import com.example.karim.lahga.ripplelibrary.listener.RecordingListener;
 import com.example.karim.lahga.ripplelibrary.renderer.Renderer;
 import com.example.karim.lahga.ripplelibrary.renderer.TimerCircleRippleRenderer;
+import com.example.karim.lahga.tensorFlow.Classifier;
 import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
 import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
@@ -42,7 +39,10 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import static com.example.karim.lahga.MainActivity.audioAmplitudes;
+import static com.example.karim.lahga.MainActivity.finish;
 
 /**
  * Created by karim on 2/24/2018.
@@ -56,23 +56,22 @@ public class record_frag extends Fragment {
     private OpenSansSBTextView progressText;
     private MediaPlayer player = null;
     private File directory = null;
-    private File audioFile = null;
     private VoiceRippleView voiceRipple;
     private Renderer currentRenderer;
     private AVLoadingIndicatorView loading;
     private DialogPlus predictionDialog;
-    private ImageClassifier imageClassifier;
+    private Boolean isLoading = false;
+    private Boolean playEnabled = false;
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
         View rootView = inflater.inflate(R.layout.record_frag, container, false);
+
         loading =  rootView.findViewById(R.id.avi);
         voiceRipple = rootView.findViewById(R.id.voice_ripple_view);
         progressText = rootView.findViewById(R.id.textView);
-
         playButton = rootView.findViewById(R.id.button);
 
-        if (((MainActivity)getActivity()).playEnabled)
+        if (playEnabled)
             playButton.setVisibility(View.VISIBLE);
         else
             playButton.setVisibility(View.GONE);
@@ -80,107 +79,85 @@ public class record_frag extends Fragment {
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (directory != null && audioFile != null) {
-                    player = new MediaPlayer();
-                    try {
-                        player.setDataSource(audioFile.getAbsolutePath());
-                        player.prepare();
-                        player.start();
+                if (directory != null) {
+                    if (player == null){
+                        player = new MediaPlayer();
+                        try {
+                            player.setDataSource(directory.getAbsolutePath() + "/audio.wav");
+                            player.prepare();
+                            player.start();
+                        }
+                        catch (IOException e) {
+                            Log.e(TAG, "prepare() failed");
+                        }
                     }
-                    catch (IOException e) {
-                        Log.e(TAG, "prepare() failed");
+                    else{
+                            player.release();
+                            player = new MediaPlayer();
+                            try {
+                                player.setDataSource(directory.getAbsolutePath() + "/audio.wav");
+                                player.prepare();
+                                player.start();
+                            }
+                            catch (IOException e) {
+                                Log.e(TAG, "prepare() failed");
+                            }
                     }
                 }
             }
-
         });
 
         directory = new File(getActivity().getExternalCacheDir().getAbsolutePath(), DIRECTORY_NAME);
+        voiceRipple.setDirectory(directory);
 
-        if (directory.exists()) {
-            deleteFilesInDir(directory);
-        } else {
-            directory.mkdirs();
-        }
+        if (directory.exists()) { deleteFilesInDir(directory); }
+        else { directory.mkdirs(); }
 
-        audioFile = new File(directory + "/audio.mp3");
         voiceRipple.setRecordingListener(new RecordingListener() {
-
             @Override
             public void onRecordingStopped() {
                 Log.d(TAG, "onRecordingStopped()");
                     progressText.setText("Tap to Record");
             }
-
             @Override
             public void onRecordingStarted() {
                 Log.d(TAG, "onRecordingStarted()");
                 progressText.setText("Recording..");
+                playButton.setVisibility(View.GONE);
+                if (player != null) {
+                    player.release();
+                    player = null;
+                }
             }
         });
 
         // set view related settings for ripple view
-        voiceRipple.setRippleSampleRate(Rate.LOW);
-        voiceRipple.setRippleDecayRate(Rate.HIGH);
+        voiceRipple.setRippleSampleRate(Rate.HIGH);
+        voiceRipple.setRippleDecayRate(Rate.LOW);
         voiceRipple.setBackgroundRippleRatio(1.49);
-
-        // set recorder related settings for ripple view
-        voiceRipple.setMediaRecorder(new MediaRecorder());
-        voiceRipple.setOutputFile(audioFile.getAbsolutePath());
-        voiceRipple.setAudioSource(MediaRecorder.AudioSource.MIC);
-        voiceRipple.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        voiceRipple.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-
         // set inner icon
         voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_none_black_48dp), ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_black_48dp));
         voiceRipple.setIconSize(45);
-
-        final Handler handler = new Handler();
-        final Runnable runnable = new Runnable() {
-            public void run() {
-                try {
-                    loading.smoothToShow();
-                    voiceRipple.reset();
-                    voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.plain), ContextCompat.getDrawable(getActivity(), R.drawable.plain));
-                    voiceRipple.setClickable(false);
-                    progressText.setText("Processing Audio..");
-                    preProcess();
-                }
-                catch (RuntimeException ex) {
-                    Toast.makeText(getActivity(), "Something went wrong", Toast.LENGTH_SHORT).show();
-                }
-            }
-        };
-
         voiceRipple.setOnClickListener(new View.OnClickListener() {
-
             @Override
-
             public void onClick(View view) {
                 if (voiceRipple.isRecording()) {
                     voiceRipple.stopRecording();
-                    voiceRipple.reset();
-                    handler.removeCallbacks(runnable);
                 } else {
                     try {
-                        deleteFilesInDir(directory);
+                        if (directory.exists()) {deleteFilesInDir(directory);}
+                        audioAmplitudes = 0;
                         voiceRipple.startRecording();
-                        handler.postDelayed(runnable, 5000);
                     }
-                    catch(RuntimeException e){
-
-                    }
+                    catch(RuntimeException e){ }
                 }
             }
-
         });
 
-        currentRenderer = new TimerCircleRippleRenderer(getDefaultRipplePaint(), getDefaultRippleBackgroundPaint(), getButtonPaint(), getArcPaint(), 5000.0, 0.0);
-
+        currentRenderer = new TimerCircleRippleRenderer(getDefaultRipplePaint(), getDefaultRippleBackgroundPaint(), getButtonPaint(), getArcPaint(), 5500, 0.0);
         if (currentRenderer instanceof TimerCircleRippleRenderer) {
             ((TimerCircleRippleRenderer) currentRenderer).setStrokeWidth(20);
         }
-
         voiceRipple.setRenderer(currentRenderer);
 
         predictionDialog = DialogPlus.newDialog(getActivity())
@@ -205,18 +182,43 @@ public class record_frag extends Fragment {
                 })
                 .create();
 
+        finish.setListener(new finishListener.ChangeListener() {
+            @Override
+            public void onChange() {
+                if (finish.isFinish()){
+                    try {
+                        if (audioAmplitudes < 14000)
+                            Toast.makeText(getActivity(), "Can't hear you!", Toast.LENGTH_SHORT).show();
+                        else {
+                            isLoading = true;
+                            voiceRipple.setClickable(false);
+                            voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.plain), ContextCompat.getDrawable(getActivity(), R.drawable.plain));
+                            loading.smoothToShow();
+                            progressText.setText("Processing Audio..");
+                            processFrame();
+                        }
+                    }
+                    catch (RuntimeException ex) {
+                        Toast.makeText(getActivity(), "Something went wrong", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
         return rootView;
     }
 
-    private void preProcess(){
-        String command = "-i " + directory + "/audio.mp3 -lavfi showspectrumpic=s=1920x1080 " + directory + "/spectrogram.png";
+    private void processFrame(){
+        String command = "-i " + directory + "/audio.wav -ss 0.5 -to 5.5 " + directory + "/audioTrim.wav";
         String []cmd = command.split(" ");
-        execFFMPEG(cmd);
+        execFFMPEG(cmd, false);
+        command = "-i " + directory + "/audioTrim.wav -lavfi showspectrumpic=s=224x224:legend=disabled " + directory + "/spectrogram.png";
+        cmd = command.split(" ");
+        execFFMPEG(cmd, true);
     }
 
     private Paint getArcPaint() {
         Paint paint = new Paint();
-        paint.setColor(ContextCompat.getColor(getActivity(), R.color.colorPrimaryLessDark));
+        paint.setColor(ContextCompat.getColor(getActivity(), R.color.colorPrimaryDark));
         paint.setStrokeWidth(20);
         paint.setAntiAlias(true);
         paint.setStrokeCap(Paint.Cap.SQUARE);
@@ -227,7 +229,7 @@ public class record_frag extends Fragment {
     private Paint getDefaultRipplePaint() {
         Paint ripplePaint = new Paint();
         ripplePaint.setStyle(Paint.Style.FILL);
-        ripplePaint.setColor(ContextCompat.getColor(getActivity(), R.color.colorPrimaryLessDark));
+        ripplePaint.setColor(ContextCompat.getColor(getActivity(), R.color.colorPrimaryDark));
         ripplePaint.setAntiAlias(true);
         return ripplePaint;
     }
@@ -251,29 +253,34 @@ public class record_frag extends Fragment {
     @Override
     public void onStop() {
         super.onStop();
-
-        try { voiceRipple.onStop(); }
-        catch (IllegalStateException e) { Log.e(TAG, "onStop(): ", e); }
+        if (isLoading)
+            loading.smoothToHide();
+        voiceRipple.onStop();
+        if (directory.exists()) { deleteFilesInDir(directory); }
+        playEnabled = false;
         if (player != null) {
             player.release();
             player = null;
         }
-        deleteFilesInDir(directory);
-        ((MainActivity)getActivity()).playEnabled = false;
     }
 
     @Override
     public void onDestroy() {
-        voiceRipple.onDestroy();
-        deleteFilesInDir(directory);
-        imageClassifier.close();
         super.onDestroy();
+        voiceRipple.onDestroy();
+        if (directory.exists()) { deleteFilesInDir(directory); }
+        if ( ((MainActivity)getActivity()).classifier != null)
+            ((MainActivity)getActivity()).classifier.close();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        progressText.setText("Tap to Record");
+        if (!isLoading) {
+            progressText.setText("Tap to Record");
+            voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_none_black_48dp), ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_black_48dp));
+            voiceRipple.setClickable(true);
+        }
     }
 
     private boolean deleteFilesInDir(File path) {
@@ -285,7 +292,7 @@ public class record_frag extends Fragment {
         return true;
     }
 
-    private void execFFMPEG(String[] cmd){
+    private void execFFMPEG(String[] cmd, final Boolean classify){
         FFmpeg ffmpeg = FFmpeg.getInstance(getActivity());
         try {
             ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
@@ -293,8 +300,8 @@ public class record_frag extends Fragment {
                 public void onStart() {}
                 @Override
                 public void onProgress(String message) {
-                    Log.i("FFMPEG", "start");
-                    Log.i("Progress:", message);
+                    //Log.i("FFMPEG", "start");
+                    //Log.i("Progress:", message);
                 }
                 @Override
                 public void onFailure(String message) {
@@ -304,60 +311,53 @@ public class record_frag extends Fragment {
                 public void onSuccess(String message) { Log.i("Sucess:", message); }
                 @Override
                 public void onFinish() {
-                    Log.i("FFMPEG", "finish");
-                    initTensorFlowLite();
+                    //Log.i("FFMPEG", "finish");
+                    if(classify) {
+                        playEnabled = true;
+                        playButton.setVisibility(View.VISIBLE);
+                        classifyFrame();
+                    }
                 }
             });
         } catch (FFmpegCommandAlreadyRunningException e) {
-            // Handle if FFmpeg is already running
-        }
-    }
-
-    private void initTensorFlowLite(){
-        try {
-            imageClassifier = new ImageClassifier(getActivity());
-            final Handler handler = new Handler();
-            final Runnable runnable = new Runnable() {
-                public void run() {
-                        classifyFrame();
-                }
-            };
-            handler.post(runnable);
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to initialize image classifier");
+                Log.i("FFMPEG", e.toString());
         }
     }
 
     private void classifyFrame() {
-        if (imageClassifier == null || getActivity() == null) {
+        if (((MainActivity)getActivity()).classifier == null || getActivity() == null) {
             showPredictionDialog("Uninitialized Classifier or invalid context.");
             return;
         }
-
-        Bitmap bitmap = BitmapFactory.decodeFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +"/dog.jpg");
-        bitmap = Bitmap.createScaledBitmap(bitmap, ImageClassifier.DIM_IMG_SIZE_X, ImageClassifier.DIM_IMG_SIZE_Y, false);
-        String textToShow = imageClassifier.classifyFrame(bitmap);
-        showPredictionDialog(textToShow);
+        if (new File( directory + "/spectrogram.png").exists()) {
+            Bitmap bitmap = BitmapFactory.decodeFile( directory + "/spectrogram.png");
+            //bitmap = Bitmap.createScaledBitmap(bitmap, 244, 244, false);
+            final List<Classifier.Recognition> results = ((MainActivity)getActivity()).classifier.recognizeImage(bitmap);
+            Log.i("PREDICTION",results.get(0).getTitle() + " " + results.get(0).getConfidence());
+            showPredictionDialog(results.get(0).getTitle());
+        }
+        else
+            Log.i("Image Classifier", "Spectrogram not found");
     }
 
     private void showPredictionDialog(String prediction) {
-        imageClassifier.close();
         String date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
         ((MainActivity)getActivity()).DBHelper.addHistory(prediction, date);
         ((MainActivity)getActivity()).arrayOfHistory = ((MainActivity)this.getActivity()).DBHelper.getAllHistories();
         ((MainActivity)getActivity()).adapter = new historyAdapter(getActivity(), ((MainActivity)getActivity()).arrayOfHistory);
         ((MainActivity)getActivity()).listView.setAdapter(((MainActivity)getActivity()).adapter);
         ((MainActivity)getActivity()).listView.setMenuCreator(((MainActivity)getActivity()).creator);
-
+        isLoading = false;
         loading.smoothToHide();
-        ((MainActivity)getActivity()).playEnabled = true;
-        playButton.setVisibility(View.VISIBLE);
         progressText.setText("Tap to Record");
         voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_none_black_48dp), ContextCompat.getDrawable(getActivity(), R.drawable.ic_mic_black_48dp));
         voiceRipple.setClickable(true);
 
         com.example.karim.lahga.OpenSansSBTextView predictionText = (com.example.karim.lahga.OpenSansSBTextView)predictionDialog.findViewById(R.id.textView2);
         predictionText.setText(prediction);
+        Vibrator v = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
+        v.vibrate(100);
         predictionDialog.show();
+        finish.setFinish(false);
     }
 }

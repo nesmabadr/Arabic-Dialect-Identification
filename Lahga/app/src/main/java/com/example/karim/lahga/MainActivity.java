@@ -10,23 +10,24 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.widget.TextView;
 
-import com.baoyz.swipemenulistview.SwipeMenuCreator;
-import com.baoyz.swipemenulistview.SwipeMenuListView;
+import com.example.karim.lahga.SwipeMenuList.SwipeMenuCreator;
+import com.example.karim.lahga.SwipeMenuList.SwipeMenuListView;
 import com.example.karim.lahga.fragments.about_frag;
 import com.example.karim.lahga.fragments.history_frag;
 import com.example.karim.lahga.fragments.record_frag;
+import com.example.karim.lahga.tensorFlow.Classifier;
+import com.example.karim.lahga.tensorFlow.TensorFlowImageClassifier;
 import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
 import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
     private TabLayout tabLayout;
     private ViewPager viewPager;
     public DataBaseHelper DBHelper;
-    public Boolean playEnabled = false;
     public  ArrayList<history_item> arrayOfHistory = new ArrayList<>();
     public historyAdapter adapter;
     public SwipeMenuListView listView;
@@ -45,8 +45,18 @@ public class MainActivity extends AppCompatActivity {
     private boolean permissionToRecordAccepted = false;
     private boolean permissionToReadAccepted = false;
     private boolean permissionToWriteAccepted = false;
+
     private String[] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
     private String titles[] = {"Record", "History", "About"};
+    public Classifier classifier;
+    private static final int INPUT_SIZE = 244;
+    private static final String INPUT_NAME = "input_1";
+    private static final String OUTPUT_NAME = "output_node0";
+
+    private static final String MODEL_FILE = "file:///android_asset/optimized_graph.pb";
+    private static final String LABEL_FILE = "file:///android_asset/labels.txt";
+    public static finishListener finish;
+    public static int audioAmplitudes = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,14 +73,22 @@ public class MainActivity extends AppCompatActivity {
         tabLayout.setupWithViewPager(viewPager);
 
         for (int i = 0; i < tabLayout.getTabCount(); i++) {
-            //noinspection ConstantConditions
             OpenSansSBTextView title = (OpenSansSBTextView) LayoutInflater.from(this).inflate(R.layout.tab_title,null);
             title.setText(titles[i]);
             tabLayout.getTabAt(i).setCustomView(title);
-
         }
+
         DBHelper = new DataBaseHelper(getApplicationContext());
         loadFFMPEG();
+        classifier = TensorFlowImageClassifier.create(
+                getAssets(),
+                MODEL_FILE,
+                LABEL_FILE,
+                INPUT_SIZE,
+                INPUT_NAME,
+                OUTPUT_NAME);
+
+        finish = new finishListener();
         ActivityCompat.requestPermissions(this, permissions, PERMISSIONS);
     }
 
@@ -104,7 +122,6 @@ public class MainActivity extends AppCompatActivity {
             mFragmentList.add(fragment);
             mFragmentTitleList.add(title);
         }
-
         @Override
         public CharSequence getPageTitle(int position) {
             return mFragmentTitleList.get(position);
@@ -130,7 +147,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showUnsupportedExceptionDialog() {
-
         new AlertDialog.Builder(this)
                 .setIcon(android.R.drawable.ic_dialog_alert)
                 .setTitle(getString(R.string.device_not_supported))
@@ -160,5 +176,15 @@ public class MainActivity extends AppCompatActivity {
 
         if (!permissionToRecordAccepted || !permissionToReadAccepted || !permissionToWriteAccepted)
             finish();
+        else {
+            loadFFMPEG();
+            classifier = TensorFlowImageClassifier.create(
+                    getAssets(),
+                    MODEL_FILE,
+                    LABEL_FILE,
+                    INPUT_SIZE,
+                    INPUT_NAME,
+                    OUTPUT_NAME);
+        }
     }
 }

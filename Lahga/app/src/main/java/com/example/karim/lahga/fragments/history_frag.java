@@ -1,23 +1,23 @@
 package com.example.karim.lahga.fragments;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.BounceInterpolator;
 import android.widget.AdapterView;
-
-import com.baoyz.swipemenulistview.SwipeMenu;
-import com.baoyz.swipemenulistview.SwipeMenuCreator;
-import com.baoyz.swipemenulistview.SwipeMenuItem;
-import com.baoyz.swipemenulistview.SwipeMenuListView;
 import com.example.karim.lahga.MainActivity;
 import com.example.karim.lahga.OpenSansSBTextView;
 import com.example.karim.lahga.R;
+import com.example.karim.lahga.SwipeMenuList.SwipeMenu;
+import com.example.karim.lahga.SwipeMenuList.SwipeMenuCreator;
+import com.example.karim.lahga.SwipeMenuList.SwipeMenuItem;
+import com.example.karim.lahga.SwipeMenuList.SwipeMenuListView;
 import com.example.karim.lahga.historyAdapter;
 import com.example.karim.lahga.history_item;
 
@@ -50,24 +50,20 @@ public class history_frag extends Fragment {
             @Override
             public void create(SwipeMenu menu) {
                 // create "delete" item
-                SwipeMenuItem deleteItem = new SwipeMenuItem(
-                        getActivity().getApplicationContext());
+                SwipeMenuItem deleteItem = new SwipeMenuItem(getActivity().getApplicationContext());
                 deleteItem.setBackground(new ColorDrawable(Color.parseColor("#FF6666")));
-                deleteItem.setWidth(250);
+                deleteItem.setWidth(200);
                 deleteItem.setIcon(R.drawable.ic_delete_white_24dp);
-               // deleteItem.setTitle("Delete");
-                //deleteItem.setTitleSize(12);
-                //deleteItem.setTitleColor(Color.WHITE);
+                deleteItem.setTitle("Delete");
+                deleteItem.setTitleSize(12);
+                deleteItem.setTitleColor(Color.WHITE);
 
-                // add to menu
                 menu.addMenuItem(deleteItem);
             }
         };
+
         ((MainActivity)getActivity()).listView.setMenuCreator(((MainActivity)getActivity()).creator);
-
-
         ((MainActivity)getActivity()).listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-
             public boolean onItemLongClick(AdapterView<?> arg0, View v, int index, long arg3) {
                 ((MainActivity)getActivity()).listView.smoothOpenMenu(index);
                 return false;
