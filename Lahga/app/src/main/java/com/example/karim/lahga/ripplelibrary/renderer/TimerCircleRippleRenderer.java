@@ -4,9 +4,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
-
-import com.example.karim.lahga.finishListener;
-
 import static com.example.karim.lahga.MainActivity.finish;
 
 /**

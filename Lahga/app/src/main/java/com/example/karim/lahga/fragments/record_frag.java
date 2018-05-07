@@ -14,6 +14,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.Toast;
 import com.example.karim.lahga.MainActivity;
 import com.example.karim.lahga.OpenSansSBTextView;
@@ -38,9 +40,12 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+
+import static com.example.karim.lahga.MainActivity.NoNoise;
 import static com.example.karim.lahga.MainActivity.audioAmplitudes;
 import static com.example.karim.lahga.MainActivity.finish;
 
@@ -62,6 +67,10 @@ public class record_frag extends Fragment {
     private DialogPlus predictionDialog;
     private Boolean isLoading = false;
     private Boolean playEnabled = false;
+    private Switch segmentAudio, suppressNoise;
+    private Boolean segment = false;
+    private int [] segmentedResults = {0,0,0,0};
+    private String fileIndex;
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.record_frag, container, false);
@@ -70,6 +79,32 @@ public class record_frag extends Fragment {
         voiceRipple = rootView.findViewById(R.id.voice_ripple_view);
         progressText = rootView.findViewById(R.id.textView);
         playButton = rootView.findViewById(R.id.button);
+        segmentAudio = rootView.findViewById(R.id.switch1);
+        suppressNoise = rootView.findViewById(R.id.switch2);
+
+        suppressNoise.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                NoNoise = isChecked;
+            }
+        });
+
+        segmentAudio.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                segment = isChecked;
+                if (segment)
+                    currentRenderer = new TimerCircleRippleRenderer(getDefaultRipplePaint(), getDefaultRippleBackgroundPaint(), getButtonPaint(), getArcPaint(), 6500.0, 0.0);
+                else
+                    currentRenderer = new TimerCircleRippleRenderer(getDefaultRipplePaint(), getDefaultRippleBackgroundPaint(), getButtonPaint(), getArcPaint(), 5500.0, 0.0);
+
+                if (currentRenderer instanceof TimerCircleRippleRenderer) {
+                    ((TimerCircleRippleRenderer) currentRenderer).setStrokeWidth(20);
+                }
+                voiceRipple.setRenderer(currentRenderer);
+            }
+        });
 
         if (playEnabled)
             playButton.setVisibility(View.VISIBLE);
@@ -123,7 +158,9 @@ public class record_frag extends Fragment {
             public void onRecordingStarted() {
                 Log.d(TAG, "onRecordingStarted()");
                 progressText.setText("Recording..");
-                playButton.setVisibility(View.GONE);
+                playButton.setVisibility(View.INVISIBLE);
+                segmentAudio.setClickable(false);
+                suppressNoise.setClickable(false);
                 if (player != null) {
                     player.release();
                     player = null;
@@ -143,6 +180,8 @@ public class record_frag extends Fragment {
             public void onClick(View view) {
                 if (voiceRipple.isRecording()) {
                     voiceRipple.stopRecording();
+                    segmentAudio.setClickable(true);
+                    suppressNoise.setClickable(true);
                 } else {
                     try {
                         if (directory.exists()) {deleteFilesInDir(directory);}
@@ -154,7 +193,7 @@ public class record_frag extends Fragment {
             }
         });
 
-        currentRenderer = new TimerCircleRippleRenderer(getDefaultRipplePaint(), getDefaultRippleBackgroundPaint(), getButtonPaint(), getArcPaint(), 5500, 0.0);
+        currentRenderer = new TimerCircleRippleRenderer(getDefaultRipplePaint(), getDefaultRippleBackgroundPaint(), getButtonPaint(), getArcPaint(), 5500.0, 0.0);
         if (currentRenderer instanceof TimerCircleRippleRenderer) {
             ((TimerCircleRippleRenderer) currentRenderer).setStrokeWidth(20);
         }
@@ -185,21 +224,24 @@ public class record_frag extends Fragment {
         finish.setListener(new finishListener.ChangeListener() {
             @Override
             public void onChange() {
-                if (finish.isFinish()){
-                    try {
-                        if (audioAmplitudes < 14000)
-                            Toast.makeText(getActivity(), "Can't hear you!", Toast.LENGTH_SHORT).show();
-                        else {
+                if (finish.isFinish()) {
+                    if (audioAmplitudes < 000)
+                        Toast.makeText(getActivity(), "Can't hear you!", Toast.LENGTH_SHORT).show();
+                    else {
+                        try {
                             isLoading = true;
                             voiceRipple.setClickable(false);
                             voiceRipple.setRecordDrawable(ContextCompat.getDrawable(getActivity(), R.drawable.plain), ContextCompat.getDrawable(getActivity(), R.drawable.plain));
                             loading.smoothToShow();
                             progressText.setText("Processing Audio..");
-                            processFrame();
+                            if (segment) {
+                                processFrame("0", "5");
+                            } else {
+                                processFrame("0.5", "5.5");
+                            }
+                        } catch (RuntimeException ex) {
+                            Toast.makeText(getActivity(), "Something went wrong", Toast.LENGTH_SHORT).show();
                         }
-                    }
-                    catch (RuntimeException ex) {
-                        Toast.makeText(getActivity(), "Something went wrong", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -207,11 +249,12 @@ public class record_frag extends Fragment {
         return rootView;
     }
 
-    private void processFrame(){
-        String command = "-i " + directory + "/audio.wav -ss 0.5 -to 5.5 " + directory + "/audioTrim.wav";
+    private void processFrame(String start, String end){
+        fileIndex = start;
+        String command = "-i " + directory + "/audio.wav -ss " + start + " -to " + end + " " + directory + "/audioTrim" + fileIndex + ".wav";
         String []cmd = command.split(" ");
         execFFMPEG(cmd, false);
-        command = "-i " + directory + "/audioTrim.wav -lavfi showspectrumpic=s=224x224:legend=disabled " + directory + "/spectrogram.png";
+        command = "-i " + directory + "/audioTrim" + fileIndex +".wav -lavfi showspectrumpic=s=224x224:legend=disabled " + directory + "/spectrogram" + fileIndex + ".png";
         cmd = command.split(" ");
         execFFMPEG(cmd, true);
     }
@@ -313,8 +356,6 @@ public class record_frag extends Fragment {
                 public void onFinish() {
                     //Log.i("FFMPEG", "finish");
                     if(classify) {
-                        playEnabled = true;
-                        playButton.setVisibility(View.VISIBLE);
                         classifyFrame();
                     }
                 }
@@ -329,12 +370,45 @@ public class record_frag extends Fragment {
             showPredictionDialog("Uninitialized Classifier or invalid context.");
             return;
         }
-        if (new File( directory + "/spectrogram.png").exists()) {
-            Bitmap bitmap = BitmapFactory.decodeFile( directory + "/spectrogram.png");
+        if (new File( directory + "/spectrogram" + fileIndex + ".png").exists()) {
+            Bitmap bitmap = BitmapFactory.decodeFile( directory + "/spectrogram" + fileIndex + ".png");
             //bitmap = Bitmap.createScaledBitmap(bitmap, 244, 244, false);
             final List<Classifier.Recognition> results = ((MainActivity)getActivity()).classifier.recognizeImage(bitmap);
             Log.i("PREDICTION",results.get(0).getTitle() + " " + results.get(0).getConfidence());
-            showPredictionDialog(results.get(0).getTitle());
+            if (segment){
+                segmentedResults[Integer.parseInt(results.get(0).getId())] = segmentedResults[Integer.parseInt(results.get(0).getId())] + 1;
+                int sum = 0;
+                for (int i = 0; i<4; i++){
+                    sum = sum + segmentedResults[i];
+                }
+                if (sum == 1)
+                    processFrame("1", "6");
+                if (sum == 2)
+                    processFrame("2", "7");
+                if (sum == 3){
+                    int maxAt = 0;
+                    for (int i = 0; i < segmentedResults.length; i++) {
+                        maxAt = segmentedResults[i] > segmentedResults[maxAt] ? i : maxAt;
+                    }
+                    Arrays.fill(segmentedResults, 0);
+                    switch(maxAt){
+                        case 0:
+                            showPredictionDialog("Egyptian");
+                            break;
+                        case 1:
+                            showPredictionDialog("Gulf");
+                            break;
+                        case 2:
+                            showPredictionDialog("Levantine");
+                            break;
+                        case 3:
+                            showPredictionDialog("North African");
+                            break;
+                    }
+                }
+            }
+            else
+                showPredictionDialog(results.get(0).getTitle());
         }
         else
             Log.i("Image Classifier", "Spectrogram not found");
@@ -358,6 +432,10 @@ public class record_frag extends Fragment {
         Vibrator v = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
         v.vibrate(100);
         predictionDialog.show();
+        playEnabled = true;
+        playButton.setVisibility(View.VISIBLE);
+        segmentAudio.setClickable(true);
+        suppressNoise.setClickable(true);
         finish.setFinish(false);
     }
 }

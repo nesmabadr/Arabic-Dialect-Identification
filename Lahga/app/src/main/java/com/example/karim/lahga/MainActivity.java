@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String LABEL_FILE = "file:///android_asset/labels.txt";
     public static finishListener finish;
     public static int audioAmplitudes = 0;
+    public static Boolean NoNoise = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

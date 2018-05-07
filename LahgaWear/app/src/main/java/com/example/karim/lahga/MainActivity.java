@@ -77,17 +77,18 @@ public class MainActivity extends WearableActivity {
                     recording = false;
                     isLoading = true;
                     Log.i("recording", "ended");
-                    if (audioAmplitudes < 14000) {
+                    Log.i("AMPLITUDES", String.valueOf(audioAmplitudes));
+                    /*if (audioAmplitudes >  0) {
                         Toast.makeText(MainActivity.this, "Can't hear you!", Toast.LENGTH_SHORT).show();
                         textView.setText("Tap to Record");
                         imageView.setImageResource(R.drawable.ic_mic_none_white_48dp);
-                    }
-                    else {
+                    }*/
+                    //else {
                         loading.smoothToShow();
                         textView.setText("Processing Audio..");
                         imageView.setVisibility(View.GONE);
                         loadFFMPEG();
-                    }
+                    //}
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -127,7 +128,7 @@ public class MainActivity extends WearableActivity {
             Log.i("recording", "started");
             textView.setText("Recording..");
             imageView.setImageResource(R.drawable.ic_mic_white_48dp);
-            handler.postDelayed(runnable, 6000);
+            handler.postDelayed(runnable, 5200);
         }
         else {
             try {
@@ -179,11 +180,8 @@ public class MainActivity extends WearableActivity {
     }
 
     private void ProcessFrame(){
-        String command = "-i " + directory + "/audio.wav -ss 0.5 -to 5.5 " + directory + "/audioTrim.wav";
+        String command = "-i " + directory + "/audio.wav -lavfi showspectrumpic=s=224x224:legend=disabled " + directory + "/spectrogram.png";
         String []cmd = command.split(" ");
-        execFFMPEG(cmd, false);
-        command = "-i " + directory + "/audioTrim.wav -lavfi showspectrumpic=s=224x224:legend=disabled " + directory + "/spectrogram.png";
-        cmd = command.split(" ");
         execFFMPEG(cmd, true);
     }
 
@@ -238,7 +236,7 @@ public class MainActivity extends WearableActivity {
             Bitmap bitmap = BitmapFactory.decodeFile( directory + "/spectrogram.png");
             //bitmap = Bitmap.createScaledBitmap(bitmap, 244, 244, false);
             final List<Classifier.Recognition> results = classifier.recognizeImage(bitmap);
-            Log.i("PREDICTION",results.get(0).getTitle() + " " + results.get(0).getConfidence());
+            Log.i("PREDICTION", results.get(0).getTitle() + " " + results.get(0).getConfidence());
             textView.setText("Tap to Record");
             imageView.setVisibility(View.VISIBLE);
             imageView.setImageResource(R.drawable.ic_mic_none_white_48dp);
@@ -246,8 +244,6 @@ public class MainActivity extends WearableActivity {
             file.delete();
             File file2 = new File(directory , "audio.wav");
             file2.delete();
-            File file3 = new File(directory , "audioTrim.wav");
-            file3.delete();
             Vibrator v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
             v.vibrate(100);
             Toast.makeText(this, "Dialect detected: " + results.get(0).getTitle(), Toast.LENGTH_SHORT).show();

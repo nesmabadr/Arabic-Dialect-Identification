@@ -25,8 +25,8 @@ import omrecorder.OmRecorder;
 import omrecorder.PullTransport;
 import omrecorder.PullableSource;
 import omrecorder.Recorder;
-import omrecorder.WriteAction;
 
+import static com.example.karim.lahga.MainActivity.NoNoise;
 import static com.example.karim.lahga.MainActivity.audioAmplitudes;
 
 /**
@@ -319,7 +319,7 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
                       new PullTransport.OnAudioChunkPulledListener() {
                           @Override public void onAudioChunkPulled(AudioChunk audioChunk) {
                               if (isRecording) {
-                                  if (audioChunk.maxAmplitude() > 40) {
+                                  if (audioChunk.maxAmplitude() > 10) {
                                       drop((int) audioChunk.maxAmplitude() * 8);
                                       audioAmplitudes = audioAmplitudes + (int) audioChunk.maxAmplitude();
                                   }else
@@ -332,11 +332,19 @@ public class VoiceRippleView extends View implements TimerCircleRippleRenderer.T
   }
 
   private PullableSource mic () {
-    return new PullableSource.NoiseSuppressor(
-        new PullableSource.Default(
-            new AudioRecordConfig.Default(
-                MediaRecorder.AudioSource.MIC, AudioFormat.ENCODING_PCM_16BIT,
-                AudioFormat.CHANNEL_IN_MONO, 48000)));
+    if (NoNoise){
+      return new PullableSource.NoiseSuppressor(
+              new PullableSource.Default(
+                      new AudioRecordConfig.Default(
+                              MediaRecorder.AudioSource.MIC, AudioFormat.ENCODING_PCM_16BIT,
+                              AudioFormat.CHANNEL_IN_MONO, 48000)));
+    }
+    else {
+      return new PullableSource.Default(
+              new AudioRecordConfig.Default(
+                      MediaRecorder.AudioSource.MIC, AudioFormat.ENCODING_PCM_16BIT,
+                      AudioFormat.CHANNEL_IN_MONO, 48000));
+    }
   }
 
   public void setDirectory(File directory) {this.directory = directory;}
