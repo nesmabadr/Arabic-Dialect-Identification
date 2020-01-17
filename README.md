@@ -9,7 +9,7 @@ Software requirement specification [file](https://github.com/nesmabadr/Arabic-Di
 
 <h1 align="center">Screens</h1>
 
-<p class="aligncenter">
+<p align="center">
     <img src="Picture1.png" width="200" </img> 
     <img src="Picture2.png" width="200" </img> 
 </p>
