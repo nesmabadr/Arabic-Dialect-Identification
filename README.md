@@ -9,7 +9,13 @@ Software requirement specification [file](https://github.com/nesmabadr/Arabic-Di
 
 <h1 align="center">Screens</h1>
 
-<div>
+<p class="aligncenter">
     <img src="Picture1.png" width="200" alt="centered image" </img> 
     <img src="Picture2.png" width="200" alt="centered image" </img> 
-</div>
+</p>
+
+<style>
+.aligncenter {
+    text-align: center;
+}
+</style>
