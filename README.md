@@ -11,5 +11,7 @@ Software requirement specification [file](https://github.com/nesmabadr/Arabic-Di
 
 <div align="centre">
     <img src="Picture1.png" width="200"</img> 
+</div>
+<div align="centre">
     <img src="Picture2.png" width="200"</img> 
 </div>
