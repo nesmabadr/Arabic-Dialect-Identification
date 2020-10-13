@@ -1,5 +1,6 @@
 # Lahga
-A neural network trained to identify the spoken Arabic dialect, deployed on Android and Android Wear. Developed using python and java.
+A neural network trained to identify the spoken Arabic dialect deployed on Android and Android Wear. Python, Java.
+Main features: Audio recording, history list, tensorflow, custom loading spinner, splashscreen.
 
 Powerpoint presentation [file](https://github.com/karimatwa/Etbara3-Android/blob/master/Etbara3%20Pres.pptx?raw=true).
 
