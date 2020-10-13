@@ -11,5 +11,8 @@ Software requirement specification [file](https://github.com/nesmabadr/Arabic-Di
 
 <p align="center">
     <img src="Screenshot_1.jpg" width="300" </img> 
+     <img src="Screenshot_2.jpg" width="300" </img> 
+     <img src="Screenshot_3.jpg" width="300" </img> 
+     <img src="Screenshot_4.jpg" width="300" </img> 
     <img src="Picture2.png" width="300" </img> 
 </p>
